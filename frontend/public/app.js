@@ -5,7 +5,7 @@ const app = document.getElementById('app');
 const state = {
   user: null,
   tab: 'day',
-  date: new Date().toISOString().slice(0, 10),
+  date: isoDate(new Date()),
   log: { entries: [], totals: z() },
   targets: { kcal: 2000, protein: 175, carbs: 200, fat: 60 },
   foods: [],
@@ -42,10 +42,18 @@ function toast(msg, isErr = false) {
 }
 
 // ---------- Date helpers ----------
+// Local YYYY-MM-DD. Don't use toISOString(): it converts to UTC, which shifts
+// the day for non-UTC timezones (e.g. France UTC+2 -> off by one).
+function isoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function shiftDate(days) {
   const d = new Date(state.date + 'T00:00:00');
   d.setDate(d.getDate() + days);
-  state.date = d.toISOString().slice(0, 10);
+  state.date = isoDate(d);
   loadDay();
 }
 function prettyDate(iso) {
@@ -188,7 +196,7 @@ function renderDay(view) {
 
   document.getElementById('d-prev').onclick = () => shiftDate(-1);
   document.getElementById('d-next').onclick = () => shiftDate(1);
-  document.getElementById('d-today').onclick = () => { state.date = new Date().toISOString().slice(0, 10); loadDay(); };
+  document.getElementById('d-today').onclick = () => { state.date = isoDate(new Date()); loadDay(); };
   document.getElementById('fab-add').onclick = openAddToDay;
   view.querySelectorAll('[data-del]').forEach((b) => {
     b.onclick = async () => {
