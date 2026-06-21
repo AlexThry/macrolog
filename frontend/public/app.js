@@ -360,30 +360,62 @@ function renderFoods(view) {
   draw();
 }
 
-// Parse CSV "nom,unite,kcal,P,G,L". Header line optional. Delimiter , or ;.
+// Column-name aliases (accent/case-insensitive) -> internal field.
+const CSV_ALIASES = {
+  name: ['nom', 'name', 'aliment', 'libelle', 'food', 'produit'],
+  unit: ['unite', 'unit', 'u'],
+  kcal: ['kcal', 'calories', 'calorie', 'energie', 'cal', 'kc'],
+  protein: ['p', 'prot', 'protein', 'proteins', 'proteine', 'proteines', 'protide', 'protides'],
+  carbs: ['g', 'gluc', 'glucide', 'glucides', 'carb', 'carbs', 'carbo', 'carbohydrate', 'carbohydrates'],
+  fat: ['l', 'lip', 'lipide', 'lipides', 'fat', 'fats', 'gras', 'graisse', 'graisses'],
+};
+function normHeader(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+function matchCsvField(cell) {
+  const c = normHeader(cell);
+  for (const [field, aliases] of Object.entries(CSV_ALIASES)) if (aliases.includes(c)) return field;
+  return null;
+}
+
+// Parse CSV of foods. Columns may be in ANY order when a header row is present
+// (mapped by name, FR/EN aliases). With no header, falls back to the positional
+// order nom,unite,kcal,P,G,L. Delimiter , or ; (auto-detected).
 function parseFoodsCsv(text) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (!lines.length) return [];
   const delim = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
+  const split = (line) => line.split(delim).map((c) => c.trim().replace(/^"|"$/g, ''));
   const num = (s) => {
     let v = (s || '').trim();
     if (delim === ';') v = v.replace(',', '.'); // French decimal comma when ; separates
     return parseFloat(v) || 0;
   };
+
+  // Header detection: first row maps >=2 cells to known fields.
+  const firstCols = split(lines[0]);
+  const colOf = {};
+  firstCols.forEach((cell, idx) => {
+    const f = matchCsvField(cell);
+    if (f && colOf[f] === undefined) colOf[f] = idx;
+  });
+  const hasHeader = Object.keys(colOf).length >= 2;
+  const map = hasHeader ? colOf : { name: 0, unit: 1, kcal: 2, protein: 3, carbs: 4, fat: 5 };
+  if (map.name === undefined) map.name = 0; // header without a name column -> first col
+
   const out = [];
-  for (let i = 0; i < lines.length; i++) {
-    const cols = lines[i].split(delim).map((c) => c.trim().replace(/^"|"$/g, ''));
-    // Skip a header row: first line where col0 is "nom"/"name" and kcal isn't numeric.
-    if (i === 0 && /^(nom|name)$/i.test(cols[0]) && isNaN(parseFloat(cols[2]))) continue;
-    const name = cols[0];
+  for (let i = hasHeader ? 1 : 0; i < lines.length; i++) {
+    const cols = split(lines[i]);
+    const cell = (field) => (map[field] === undefined ? '' : cols[map[field]] || '');
+    const name = cell('name').trim();
     if (!name) continue;
     out.push({
       name,
-      unit: cols[1] || 'g',
-      kcal: num(cols[2]),
-      protein: num(cols[3]),
-      carbs: num(cols[4]),
-      fat: num(cols[5]),
+      unit: cell('unit').trim() || 'g',
+      kcal: num(cell('kcal')),
+      protein: num(cell('protein')),
+      carbs: num(cell('carbs')),
+      fat: num(cell('fat')),
     });
   }
   return out;
@@ -392,7 +424,7 @@ function parseFoodsCsv(text) {
 function openFoodImport() {
   openSheet(`
     <h3>Importer des aliments (CSV)</h3>
-    <div class="sub">Colonnes : <code>nom,unite,kcal,P,G,L</code> — une ligne par aliment. En-tête optionnel. Séparateur <code>,</code> ou <code>;</code></div>
+    <div class="sub">Colonnes : <code>nom, unite, kcal, P, G, L</code> — une ligne par aliment. Avec une ligne d'en-tête, l'ordre est libre (noms FR/EN reconnus). Sans en-tête, ordre ci-dessus. Séparateur <code>,</code> ou <code>;</code></div>
     <div class="field"><label>Fichier CSV</label><input id="imp-file" type="file" accept=".csv,text/csv,text/plain" /></div>
     <div class="field"><label>… ou colle le contenu</label>
       <textarea id="imp-text" rows="6" style="width:100%;resize:vertical" placeholder="Tofu ferme,g,144,15.7,2.7,8.7&#10;Poulet,g,165,31,0,3.6"></textarea>
