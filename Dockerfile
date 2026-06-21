@@ -16,7 +16,8 @@ RUN npm ci --omit=dev
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production \
     PORT=3000 \
-    DB_PATH=/data/macrolog.db
+    DB_PATH=/data/macrolog.db \
+    JWT_SECRET=${JWT_SECRET}
 WORKDIR /app
 
 # Compiled node_modules from the build stage (incl. better-sqlite3 binding).
