@@ -332,7 +332,10 @@ function renderFoods(view) {
   view.innerHTML = `
     <div class="day-head" style="margin-bottom:4px">
       <div class="section-title" style="margin:0">Mes aliments <span class="muted">(${state.foods.length})</span></div>
-      <button class="btn small" id="f-new">+ Aliment</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn small ghost" id="f-import">Importer CSV</button>
+        <button class="btn small" id="f-new">+ Aliment</button>
+      </div>
     </div>
     <div class="search-bar" style="margin-top:14px">
       <input id="f-search" placeholder="Filtrer…" autocomplete="off" />
@@ -353,7 +356,79 @@ function renderFoods(view) {
   };
   document.getElementById('f-search').oninput = draw;
   document.getElementById('f-new').onclick = () => openFoodForm(null);
+  document.getElementById('f-import').onclick = openFoodImport;
   draw();
+}
+
+// Parse CSV "nom,unite,kcal,P,G,L". Header line optional. Delimiter , or ;.
+function parseFoodsCsv(text) {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return [];
+  const delim = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
+  const num = (s) => {
+    let v = (s || '').trim();
+    if (delim === ';') v = v.replace(',', '.'); // French decimal comma when ; separates
+    return parseFloat(v) || 0;
+  };
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const cols = lines[i].split(delim).map((c) => c.trim().replace(/^"|"$/g, ''));
+    // Skip a header row: first line where col0 is "nom"/"name" and kcal isn't numeric.
+    if (i === 0 && /^(nom|name)$/i.test(cols[0]) && isNaN(parseFloat(cols[2]))) continue;
+    const name = cols[0];
+    if (!name) continue;
+    out.push({
+      name,
+      unit: cols[1] || 'g',
+      kcal: num(cols[2]),
+      protein: num(cols[3]),
+      carbs: num(cols[4]),
+      fat: num(cols[5]),
+    });
+  }
+  return out;
+}
+
+function openFoodImport() {
+  openSheet(`
+    <h3>Importer des aliments (CSV)</h3>
+    <div class="sub">Colonnes : <code>nom,unite,kcal,P,G,L</code> — une ligne par aliment. En-tête optionnel. Séparateur <code>,</code> ou <code>;</code></div>
+    <div class="field"><label>Fichier CSV</label><input id="imp-file" type="file" accept=".csv,text/csv,text/plain" /></div>
+    <div class="field"><label>… ou colle le contenu</label>
+      <textarea id="imp-text" rows="6" style="width:100%;resize:vertical" placeholder="Tofu ferme,g,144,15.7,2.7,8.7&#10;Poulet,g,165,31,0,3.6"></textarea>
+    </div>
+    <div id="imp-preview" class="li-sub" style="margin:6px 0">0 aliment détecté.</div>
+    <button class="btn" id="imp-go" disabled>Importer</button>
+  `);
+  const textEl = document.getElementById('imp-text');
+  const previewEl = document.getElementById('imp-preview');
+  const goBtn = document.getElementById('imp-go');
+  let parsed = [];
+  const refresh = () => {
+    parsed = parseFoodsCsv(textEl.value);
+    goBtn.disabled = parsed.length === 0;
+    if (!parsed.length) { previewEl.textContent = '0 aliment détecté.'; return; }
+    const sample = parsed.slice(0, 3)
+      .map((f) => `${escapeHtml(f.name)} (${r0(f.kcal)} kcal /100${escapeHtml(f.unit)})`)
+      .join(', ');
+    previewEl.innerHTML = `${parsed.length} aliment(s) détecté(s) : ${sample}${parsed.length > 3 ? '…' : ''}`;
+  };
+  textEl.oninput = refresh;
+  document.getElementById('imp-file').onchange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { textEl.value = reader.result; refresh(); };
+    reader.readAsText(file);
+  };
+  goBtn.onclick = async () => {
+    if (!parsed.length) return;
+    try {
+      const r = await api('/foods/import', { method: 'POST', body: { foods: parsed } });
+      closeSheet(); await loadFoods(); render();
+      toast(`${r.inserted} aliment(s) importé(s)${r.skipped ? ` · ${r.skipped} ignoré(s)` : ''}`);
+    } catch (e) { toast(e.message, true); }
+  };
 }
 
 function foodRow(f) {

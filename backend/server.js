@@ -128,6 +128,28 @@ app.post('/api/foods', authRequired, (req, res) => {
   res.json(db.prepare('SELECT * FROM foods WHERE id = ?').get(info.lastInsertRowid));
 });
 
+// Bulk import: body = { foods: [{ name, unit, kcal, protein, carbs, fat }, ...] }
+app.post('/api/foods/import', authRequired, (req, res) => {
+  const items = Array.isArray(req.body?.foods) ? req.body.foods : [];
+  if (!items.length) return res.status(400).json({ error: 'Aucun aliment à importer' });
+  const stmt = db.prepare(
+    `INSERT INTO foods (user_id, name, unit, kcal, protein, carbs, fat)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  let inserted = 0;
+  const tx = db.transaction(() => {
+    for (const it of items) {
+      const name = (it?.name || '').trim();
+      if (!name) continue;
+      const unit = (it.unit || 'g').toString().trim() || 'g';
+      stmt.run(req.user.id, name, unit, +it.kcal || 0, +it.protein || 0, +it.carbs || 0, +it.fat || 0);
+      inserted++;
+    }
+  });
+  tx();
+  res.json({ inserted, skipped: items.length - inserted });
+});
+
 app.put('/api/foods/:id', authRequired, (req, res) => {
   const { name, unit, kcal, protein, carbs, fat } = req.body || {};
   const food = db.prepare('SELECT * FROM foods WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
