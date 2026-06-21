@@ -1,6 +1,8 @@
 services:
-  backend:
-    build: ./backend
+  app:
+    build: .
+    ports:
+      - "3000:3000"
     environment:
       # IMPORTANT: set a long random value, e.g. `openssl rand -hex 32`
       JWT_SECRET: ${JWT_SECRET:-change-me}
@@ -8,14 +10,6 @@ services:
       PORT: "3000"
     volumes:
       - macrolog-data:/data
-    restart: unless-stopped
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "8080:80"
-    depends_on:
-      - backend
     restart: unless-stopped
 
 volumes:

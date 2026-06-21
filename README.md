@@ -48,6 +48,25 @@ npm start
 # -> http://localhost:3000
 ```
 
+## Docker (un seul conteneur)
+
+Tout (API + front) tourne dans **une seule image** : Express sert le front
+statique et l'API sur le même port.
+
+```bash
+# JWT_SECRET : génère une valeur longue et aléatoire (openssl rand -hex 32)
+JWT_SECRET=$(openssl rand -hex 32) docker compose up -d --build
+# -> http://localhost:3000
+```
+
+La base SQLite est persistée dans le volume `macrolog-data` (monté sur `/data`).
+
+Créer / réinitialiser un utilisateur (commande interactive dans le conteneur) :
+
+```bash
+docker compose exec app npm run init-user
+```
+
 ## Déploiement sur ton serveur
 
 1. Copie le dossier, `npm install`, crée le `.env` (avec `NODE_ENV=production` si tu sers en HTTPS — active le cookie `secure`).
@@ -91,5 +110,7 @@ frontend/public/
   index.html
   styles.css
   app.js           SPA (aucune dépendance)
+Dockerfile         image unique (API + front)
+docker-compose.yml service unique "app"
 ```
 # macrolog
