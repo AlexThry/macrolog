@@ -115,9 +115,45 @@ db.exec(`
     fat REAL NOT NULL DEFAULT 60,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+  CREATE TABLE IF NOT EXISTS tracker (
+    user_id INTEGER PRIMARY KEY,
+    weight_goal REAL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS weight_entries (
+    user_id INTEGER NOT NULL,
+    log_date TEXT NOT NULL,
+    weight REAL NOT NULL,
+    PRIMARY KEY (user_id, log_date),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS habits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS habit_checks (
+    habit_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    log_date TEXT NOT NULL,
+    PRIMARY KEY (habit_id, log_date),
+    FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS journal_entries (
+    user_id INTEGER NOT NULL,
+    log_date TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (user_id, log_date),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
   CREATE INDEX IF NOT EXISTS idx_log_user_date ON log_entries(user_id, log_date);
   CREATE INDEX IF NOT EXISTS idx_foods_user ON foods(user_id);
   CREATE INDEX IF NOT EXISTS idx_recipes_user ON recipes(user_id);
+  CREATE INDEX IF NOT EXISTS idx_weight_user ON weight_entries(user_id, log_date);
+  CREATE INDEX IF NOT EXISTS idx_habitchk_user ON habit_checks(user_id, log_date);
 `);
 
 console.log(`[db] backend = ${mode}, path = ${DB_PATH}`);
