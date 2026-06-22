@@ -6,7 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "init-user": "node scripts/init-user.js"
+    "init-user": "node scripts/init-user.js",
+    "export-db": "node scripts/export-db.js",
+    "import-db": "node scripts/import-db.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

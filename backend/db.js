@@ -79,6 +79,7 @@ db.exec(`
     user_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     servings REAL NOT NULL DEFAULT 1,
+    notes TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
@@ -155,6 +156,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_weight_user ON weight_entries(user_id, log_date);
   CREATE INDEX IF NOT EXISTS idx_habitchk_user ON habit_checks(user_id, log_date);
 `);
+
+// ---------- Lightweight migrations (for databases created before a column existed) ----------
+function hasColumn(table, col) {
+  return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+}
+if (!hasColumn('recipes', 'notes')) {
+  db.exec("ALTER TABLE recipes ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
+}
 
 console.log(`[db] backend = ${mode}, path = ${DB_PATH}`);
 export default db;

@@ -91,6 +91,28 @@ docker compose exec app npm run init-user
   (modifiable via `DB_PATH` dans `.env`).
 - **Sauvegarde** = copier ce fichier (et les `-wal`/`-shm` s'ils existent).
 
+### Migration vers un nouveau déploiement
+
+Le dossier `data/` est gitignoré : un nouveau déploiement démarre avec une base
+vide. Pour transférer les données, exporter en JSON puis réimporter.
+
+```bash
+# Ancien serveur
+cd backend
+npm run export-db                       # -> data/macrolog-export-<date>.json
+#   (ou: npm run export-db -- /chemin/sauvegarde.json)
+
+# Copier le fichier .json vers le nouveau serveur, puis :
+
+# Nouveau serveur (après npm install)
+cd backend
+npm run import-db -- /chemin/macrolog-export-<date>.json
+```
+
+> Le dump JSON est portable entre `better-sqlite3` et `node:sqlite`.
+> L'import **remplace** le contenu des tables présentes dans le fichier et
+> recrée le schéma au besoin (fonctionne sur une base vierge).
+
 ## Notes
 
 - Les macros loggées sont **figées au moment de l'ajout** (snapshot) : modifier
@@ -102,15 +124,22 @@ docker compose exec app npm run init-user
 
 ```
 backend/
-  server.js        routes API + service du front
-  db.js            schéma + adaptateur SQLite
-  auth.js          JWT + middleware
-  scripts/init-user.js
+  server.js          setup Express + montage des routers + service du front
+  db.js              schéma + migrations + adaptateur SQLite
+  auth.js            JWT + middleware
+  lib/helpers.js     helpers partagés (macros, recettes, dates)
+  routes/            un router par domaine
+    auth.js  targets.js  foods.js  recipes.js  log.js  tracker.js
+  scripts/
+    init-user.js  export-db.js  import-db.js
 frontend/public/
   index.html
   styles.css
-  app.js           SPA (aucune dépendance)
-Dockerfile         image unique (API + front)
-docker-compose.yml service unique "app"
+  js/                SPA en modules ES (aucune dépendance)
+    main.js          point d'entrée (boot)
+    state.js api.js dom.js dates.js loaders.js ui.js csv.js charts.js
+    views/           login.js day.js foods.js recipes.js tracker.js settings.js
+Dockerfile           image unique (API + front)
+docker-compose.yml   service unique "app"
 ```
 # macrolog

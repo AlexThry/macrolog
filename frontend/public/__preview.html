@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MacroLog — preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script>
+  // ---- Mock /api backend for visual preview only ----
+  (function () {
+    const foods = [
+      { id: 1, name: 'Tofu ferme', unit: 'g', kcal: 144, protein: 15.7, carbs: 2.7, fat: 8.7 },
+      { id: 2, name: 'Poulet (blanc)', unit: 'g', kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+      { id: 3, name: 'Riz basmati cuit', unit: 'g', kcal: 130, protein: 2.7, carbs: 28, fat: 0.3 },
+      { id: 4, name: 'Avocat', unit: 'g', kcal: 160, protein: 2, carbs: 9, fat: 15 },
+      { id: 5, name: 'Yaourt grec 0%', unit: 'g', kcal: 59, protein: 10, carbs: 3.6, fat: 0.4 },
+      { id: 6, name: 'Amandes', unit: 'g', kcal: 579, protein: 21, carbs: 22, fat: 50 },
+      { id: 7, name: 'Lait d\'avoine', unit: 'ml', kcal: 47, protein: 1, carbs: 7, fat: 1.5 },
+      { id: 8, name: 'Oeuf', unit: 'unit', kcal: 78, protein: 6.3, carbs: 0.6, fat: 5.3 },
+    ];
+    const recipes = [
+      { id: 1, name: 'Chili protéiné', itemCount: 4, servings: 4, notes: 'Mijoter 30 min.', perServing: { kcal: 410, protein: 32, carbs: 38, fat: 12 } },
+      { id: 2, name: 'Bowl tofu-riz', itemCount: 3, servings: 2, notes: '', perServing: { kcal: 520, protein: 28, carbs: 54, fat: 19 } },
+    ];
+    const recipeDetail = {
+      1: { name: 'Chili protéiné', servings: 4, notes: 'Mijoter 30 min à feu doux.', items: [
+        { id: 2, quantity: 400, name: 'Poulet (blanc)', unit: 'g', kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+        { id: 3, quantity: 300, name: 'Riz basmati cuit', unit: 'g', kcal: 130, protein: 2.7, carbs: 28, fat: 0.3 },
+      ] },
+      2: { name: 'Bowl tofu-riz', servings: 2, notes: '', items: [] },
+    };
+    const targets = { kcal: 2200, protein: 165, carbs: 230, fat: 70 };
+    const log = {
+      entries: [
+        { id: 1, label: 'Yaourt grec + amandes', kcal: 320, protein: 24, carbs: 14, fat: 18 },
+        { id: 2, label: 'Bowl tofu-riz', kcal: 520, protein: 28, carbs: 54, fat: 19 },
+        { id: 3, label: 'Poulet 200g', kcal: 330, protein: 62, carbs: 0, fat: 7.2 },
+        { id: 4, label: 'Avocat 80g', kcal: 128, protein: 1.6, carbs: 7.2, fat: 12 },
+      ],
+      totals: { kcal: 1298, protein: 115.6, carbs: 75.2, fat: 56.2 },
+    };
+    // weights across June 2026, gentle downward trend
+    const weights = [];
+    let w = 78.4;
+    for (let d = 1; d <= 22; d++) {
+      if (d % 2 === 1 || d % 3 === 0) { weights.push({ date: `2026-06-${String(d).padStart(2,'0')}`, weight: +(w).toFixed(1) }); w -= 0.12 + Math.random()*0.18; }
+    }
+    const habits = [
+      { id: 1, name: '8 000 pas' }, { id: 2, name: '2 L d\'eau' },
+      { id: 3, name: 'Musculation' }, { id: 4, name: 'Pas de sucre ajouté' },
+    ];
+    const checks = {};
+    for (let d = 1; d <= 22; d++) {
+      const date = `2026-06-${String(d).padStart(2,'0')}`;
+      const arr = habits.filter(() => Math.random() > 0.32).map(h => h.id);
+      checks[date] = arr;
+    }
+    const tracker = {
+      goal: 75, todayWeight: weights.length ? weights[weights.length-1].weight : 76.6,
+      weights, habits, checks, journal: 'Bonne séance ce matin. Énergie stable toute la journée.',
+    };
+
+    const json = (data) => Promise.resolve(new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const realFetch = window.fetch.bind(window);
+    window.fetch = function (url, opts = {}) {
+      if (typeof url !== 'string' || !url.startsWith('/api')) return realFetch(url, opts);
+      const method = (opts.method || 'GET').toUpperCase();
+      const path = url.slice(4).split('?')[0];
+      if (method !== 'GET') return json({ ok: true, inserted: 1, skipped: 0, username: 'sarah' });
+      if (path === '/me') return json({ username: 'sarah' });
+      if (path === '/targets') return json(targets);
+      if (path === '/foods') return json(foods);
+      if (path === '/recipes') return json(recipes);
+      if (path.startsWith('/recipes/')) return json(recipeDetail[path.split('/')[2]] || { name: '', servings: 1, notes: '', items: [] });
+      if (path === '/log') return json(log);
+      if (path === '/tracker') return json(tracker);
+      return json({});
+    };
+  })();
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
