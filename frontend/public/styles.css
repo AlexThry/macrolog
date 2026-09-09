@@ -52,6 +52,7 @@ html, body {
 }
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(1100px 560px at 88% -10%, rgba(99,102,241,0.10), transparent 62%),
     radial-gradient(820px 520px at -6% 2%, rgba(14,165,233,0.08), transparent 58%),
@@ -407,6 +408,11 @@ select {
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+/* iOS Safari zooms the page on focus when an input's font-size is under 16px */
+@media (max-width: 899px) {
+  input, select, textarea { font-size: 16px; }
+}
+
 .btn {
   width: 100%;
   white-space: nowrap;
@@ -466,7 +472,9 @@ select {
   width: 100%;
   max-width: 520px;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 22px 20px calc(30px + env(safe-area-inset-bottom));
   animation: slideup 0.26s cubic-bezier(.2,.85,.25,1);
   box-shadow: var(--shadow-lg);
@@ -486,6 +494,9 @@ select {
 .ri-row { display: flex; gap: 10px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
 .ri-row .ri-name { flex: 1; font-size: 13.5px; font-weight: 600; }
 .ri-row input { width: 92px; text-align: right; font-size: 14px; padding: 8px 10px; }
+@media (max-width: 899px) {
+  .ri-row input { font-size: 16px; }
+}
 .ri-row .ri-del { background: none; border: none; color: var(--ink-faint); font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; transition: all .14s; }
 .ri-row .ri-del:hover { color: var(--over); background: #fdeced; }
 .ri-macros {
@@ -612,6 +623,7 @@ select {
 /* ===================== Login ===================== */
 .login-wrap {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
 }
